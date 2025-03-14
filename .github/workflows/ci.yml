@@ -15,7 +15,7 @@ jobs:
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm-snapshot.asc
           sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main"
           sudo apt-get update -qq
-          sudo apt-get install -yq clang-10
+          sudo apt-get install -yq clang-15
         shell: bash
       - uses: actions/checkout@v4
       - uses: ./.github/actions/install-ubuntu
