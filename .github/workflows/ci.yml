@@ -3,147 +3,27 @@ name: CI
 on: [ workflow_dispatch ]
 
 jobs:
-  linux:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - "ubuntu:22.04"        # gcc 12.2.0, clang 15.0.7, cmake 3.24.2
-        build_type: [Dev]
-        cpp_compiler: [g++]
-        cpp_version: [c++14]
-        include:
-          - image: "ubuntu:24.04"
-            CXXFLAGS: -Wno-stringop-overread -Wno-array-bounds
-          - image: "debian:bullseye"
-            cpp_version: c++17
-          - image: "debian:bullseye"
-            cpp_version: c++20
-          - image: "debian:bullseye"
-            c_compiler: clang
-            cpp_compiler: clang++
-          - image: "debian:bullseye"
-            c_compiler: clang
-            cpp_compiler: clang++
-            cpp_version: c++17
-          - image: "debian:bullseye"
-            c_compiler: clang
-            cpp_compiler: clang++
-            cpp_version: c++20
-          - image: "debian:bullseye"
-            build_type: RelWithDebInfo
-          - image: "debian:bookworm"
-            CXXFLAGS: -Wno-stringop-overread -Wno-array-bounds
-          - image: "debian:bookworm"
-            cpp_version: c++17
-            CXXFLAGS: -Wno-stringop-overread -Wno-array-bounds
-          - image: "debian:bookworm"
-            cpp_version: c++20
-            CXXFLAGS: -Wno-stringop-overread -Wno-array-bounds
-          - image: "debian:bookworm"
-            c_compiler: clang
-            cpp_compiler: clang++
-          - image: "debian:bookworm"
-            c_compiler: clang
-            cpp_compiler: clang++
-            cpp_version: c++17
-          - image: "debian:bookworm"
-            c_compiler: clang
-            cpp_compiler: clang++
-            cpp_version: c++20
-          - image: "debian:bookworm"
-            build_type: RelWithDebInfo
-            CXXFLAGS: -Wno-stringop-overread -Wno-array-bounds
-          - image: "debian:testing"
-            CXXFLAGS: -Wno-stringop-overread -Wno-array-bounds
-          - image: "debian:testing"
-            c_compiler: clang
-            cpp_compiler: clang++
-          - image: "debian:experimental"
-            CXXFLAGS: -Wno-stringop-overread -Wno-array-bounds
-          - image: "debian:experimental"
-            c_compiler: clang
-            cpp_compiler: clang++
-          - image: "fedora:39"
-            CXXFLAGS: -Wno-stringop-overread -Wno-array-bounds
-          - image: "fedora:40"
-            CMAKE_OPTS: -DRUN_TESTS_WITH_BINARY_COMPARE=OFF
-            CXXFLAGS: -Wno-stringop-overread -Wno-array-bounds
-          - image: "fedora:41"
-            CMAKE_OPTS: -DRUN_TESTS_WITH_BINARY_COMPARE=OFF
-            CXXFLAGS: -Wno-stringop-overread -Wno-array-bounds
-    container:
-      image: ${{ matrix.image }}
-      env:
-        BUILD_TYPE: ${{ matrix.build_type }}
-        CMAKE_OPTS: ${{ matrix.CMAKE_OPTS }}
-        CC: ${{ matrix.c_compiler }}
-        CXX: ${{ matrix.cpp_compiler }}
-        CXXFLAGS: ${{ matrix.CXXFLAGS }}
-        LDFLAGS: ${{ matrix.LDFLAGS }}
-        CPP_VERSION: ${{ matrix.cpp_version }}
-        APT_LISTCHANGES_FRONTEND: none
-        DEBIAN_FRONTEND: noninteractive
-    steps:
-      - name: Prepare container (apt)
-        shell: bash
-        if: startsWith(matrix.image, 'debian:') || startsWith(matrix.image, 'ubuntu:')
-        run: |
-          apt-get update -qq
-          apt-get install -yq \
-            clang \
-            cmake \
-            g++ \
-            git \
-            libboost-dev \
-            libboost-program-options-dev \
-            libbz2-dev \
-            libexpat1-dev \
-            liblz4-dev \
-            make \
-            nlohmann-json3-dev \
-            pandoc \
-            zlib1g-dev
-      - name: Install compiler
-        shell: bash
-        if: matrix.cpp_compiler == 'clang++-14'
-        run: apt-get install -yq --no-install-suggests --no-install-recommends clang-14
-      - name: Prepare container (dnf)
-        shell: bash
-        if: startsWith(matrix.image, 'fedora:')
-        run: |
-          dnf install --quiet --assumeyes \
-            boost-devel \
-            bzip2-devel \
-            cmake \
-            expat-devel \
-            gcc-c++ \
-            git \
-            json-devel \
-            lz4-devel \
-            make \
-            pandoc \
-            zlib-devel
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/install-from-git
-      - uses: ./.github/actions/cmake
-      - uses: ./.github/actions/build
-      - uses: ./.github/actions/ctest
-
-  ubuntu-latest:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
+  ubuntu-22_04:
+    runs-on: ubuntu-22.04
     env:
-      CC: clang-18
-      CXX: clang++-18
-      BUILD_TYPE: Dev
+      CC: clang-15
+      CXX: clang++-15
+      BUILD_TYPE: Release
     steps:
+      - name: Install new clang
+        run: |
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm-snapshot.asc
+          sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main"
+          sudo apt-get update -qq
+          sudo apt-get install -yq clang-10
+        shell: bash
       - uses: actions/checkout@v4
       - uses: ./.github/actions/install-ubuntu
       - uses: ./.github/actions/install-from-git
       - uses: ./.github/actions/cmake
       - uses: ./.github/actions/build
       - uses: ./.github/actions/ctest
-
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: build/
